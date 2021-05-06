@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "networkReference": {
+     "value":  {
+     "subscriptionId": "",
+     "resourceGroupName": "Anders-Kubernetes",
+     "virtualNetworkName":"MyVNET",
+     "subnetName": "default",
+     "location": "westeurope"
+     }
+   },
+   "nsgReference": {
+    "value": {
+    "subscriptionId": "",
+    "resourceGroupName": "Anders-Kubernetes",
+    "networkSecurityGroupName": "default-NSG"
+   }
+ },
+    "adminUsername": {
+      "value": "admin"
+    },
+    "adminPassword": {
+      "value": "#Sille1337Sille1337"
+    },
+    "tagName": {
+      "value": "Department"
+    }, 
+    "tagValue": {
+      "value": "3497"
+    },        
+    "vmName": {
+      "value": "vmAnders4"
+    }
+
+  }
+}

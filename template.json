@@ -1,0 +1,256 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "adminUsername": {
+        "type": "string",
+        "metadata": {
+          "description": "Username for the Virtual Machine."
+        }
+      },
+      "adminPassword": {
+        "type": "securestring",
+        "minLength": 12,
+        "metadata": {
+          "description": "Password for the Virtual Machine."
+      }
+        },    
+        "networkReference": {
+          "type": "object",
+          "defaultValue":  {
+          "subscriptionId": "936f7231-b135-4488-937a-f6c70f46b43d",
+          "resourceGroupName": "Anders-W46-DeployVM",
+          "virtualNetworkName":"MyVNET",
+          "subnetName": "Subnet",
+          "location": "northeurope"
+         }
+       },    
+        "nsgReference": {
+          "type": "object",
+          "defaultValue":  {
+          "subscriptionId": "936f7231-b135-4488-937a-f6c70f46b43d",
+          "resourceGroupName": "Anders-W46-DeployVM",
+          "networkSecurityGroupName": "default-NSG"
+         }
+       },           
+       "tagName": {
+        "type": "string",
+         "defaultValue": "Owner",
+        "metadata": {
+         "displayName": "Department Name",
+         "description": "Name of department."
+        }
+      },
+       "tagValue": {
+        "type": "string",
+         "defaultValue": "Anders Bjarnesson",
+        "metadata": {
+         "displayName": "Department Value",
+         "description": "Value of department."
+        }
+      },         
+       "dnsLabelPrefix": {
+        "type": "string",
+        "defaultValue": "[parameters('vmName')]",
+        "metadata": {
+          "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+        }
+      },
+      "publicIpName": {
+        "type": "string",
+        "defaultValue": "[concat(parameters('vmName'), '-', 'PiP')]",
+        "metadata": {
+          "description": "Name for the Public IP used to access the Virtual Machine."
+        }
+      },
+      "publicIPAllocationMethod": {
+        "type": "string",
+        "defaultValue": "Dynamic",
+        "allowedValues": [
+          "Dynamic",
+          "Static"
+        ],
+        "metadata": {
+          "description": "Allocation method for the Public IP used to access the Virtual Machine."
+        }
+      },
+      "publicIpSku": {
+        "type": "string",
+        "defaultValue": "Basic",
+        "allowedValues": [
+          "Basic",
+          "Standard"
+        ],
+        "metadata": {
+          "description": "SKU for the Public IP used to access the Virtual Machine."
+        }
+      },
+  
+      "OSVersion": {
+        "type": "string",
+        "defaultValue": "2019-Datacenter",
+        "allowedValues": [
+          "2008-R2-SP1",
+          "2012-Datacenter",
+          "2012-R2-Datacenter",
+          "2016-Nano-Server",
+          "2016-Datacenter-with-Containers",
+          "2016-Datacenter",
+          "2019-Datacenter",
+          "2019-Datacenter-Core",
+          "2019-Datacenter-Core-smalldisk",
+          "2019-Datacenter-Core-with-Containers",
+          "2019-Datacenter-Core-with-Containers-smalldisk",
+          "2019-Datacenter-smalldisk",
+          "2019-Datacenter-with-Containers",
+          "2019-Datacenter-with-Containers-smalldisk"
+        ],
+        "metadata": {
+          "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+        }
+      },
+      "vmSize": {
+        "type": "string",
+        "defaultValue": "Standard_D2_v3",
+        "metadata": {
+          "description": "Size of the virtual machine."
+        }
+      },
+      "vmName": {
+        "type": "string",
+        "defaultValue": "simple-vm",
+        "metadata": {
+          "description": "Name of the virtual machine."
+        }
+      }
+    },
+    "variables": {
+     "storageAccountName": "[concat('bootdiags', uniquestring(resourceGroup().id))]",
+     "nicName": "[parameters('vmName')]",
+     "subnetRefId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/virtualNetworks/',parameters('networkReference').virtualNetworkName, '/subnets/', parameters('networkReference').subnetName)]",
+     "nsgRefId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/networkSecurityGroups/',parameters('nsgReference').networkSecurityGroupName)]"
+     },
+    "resources": [
+      {
+        "type": "Microsoft.Storage/storageAccounts",
+        "apiVersion": "2019-06-01",
+        "name": "[variables('storageAccountName')]",
+        "location": "[parameters('networkReference').location]",
+        "sku": {
+          "name": "Standard_LRS"
+        },
+        "kind": "Storage",
+        "properties": {}
+      },
+      {
+        "type": "Microsoft.Network/publicIPAddresses",
+        "apiVersion": "2020-06-01",
+        "name": "[parameters('publicIPName')]",
+        "location": "[parameters('networkReference').location]",
+        "sku": {
+          "name": "[parameters('publicIpSku')]"
+        },
+        "properties": {
+          "publicIPAllocationMethod": "[parameters('publicIPAllocationMethod')]",
+          "dnsSettings": {
+            "domainNameLabel": "[parameters('dnsLabelPrefix')]"
+          }
+        }
+      },           
+      {
+        "type": "Microsoft.Network/networkInterfaces",
+        "apiVersion": "2020-06-01",
+        "name": "[variables('nicName')]",
+        "location": "[parameters('networkReference').location]",
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPName'))]" 
+                 
+        ],
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPName'))]"
+                },
+                "subnet": {
+                  "id": "[variables('subnetRefId')]"
+                  } 
+                
+              }
+            }            
+           
+          ],
+             "networkSecurityGroup": {
+             "id": "[variables('nsgRefId')]"
+          }
+          
+        }
+      },
+      {
+        "type": "Microsoft.Compute/virtualMachines",
+        "apiVersion": "2020-06-01",
+        "name": "[parameters('vmName')]",
+        "location": "[parameters('networkReference').location]",
+        "tags": {
+        "[parameters('tagName')]": "[parameters('tagValue')]"
+        },
+        "dependsOn": [
+          "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+          "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+        ],
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[parameters('vmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[parameters('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "MicrosoftWindowsServer",
+              "offer": "WindowsServer",
+              "sku": "[parameters('OSVersion')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "createOption": "FromImage",
+              "managedDisk": {
+                "storageAccountType": "StandardSSD_LRS"
+              }
+            },
+            "dataDisks": [
+              {
+                "diskSizeGB": 1023,
+                "lun": 0,
+                "createOption": "Empty"
+              }
+            ]
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+              }
+            ]
+          },
+          "diagnosticsProfile": {
+            "bootDiagnostics": {
+              "enabled": true,
+              "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))).primaryEndpoints.blob]"
+            }
+          }
+        }
+      }
+    ],
+    "outputs": {
+      "hostname": {
+        "type": "string",
+        "value": "[reference(parameters('publicIPName')).dnsSettings.fqdn]"
+      }
+    }
+  }
